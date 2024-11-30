@@ -1,6 +1,15 @@
 <template>
   <div class="home-container">
     <h1>Competiciones</h1>
+    <div v-if="authStore.user?.isAdmin" class="admin-actions">
+      <button 
+        @click="showCreateModal = true" 
+        class="btn-create"
+      >
+        <span class="icon">+</span>
+        Nueva Competición
+      </button>
+    </div>
 
     <div v-if="competitionStore.loading" class="loading">
       Cargando competiciones...
@@ -20,8 +29,17 @@
           <p>Participantes: {{ competition.participants.length }}</p>
         </div>
         <div class="competition-actions">
+          <!-- Opciones de administrador -->
+          <template v-if="authStore.user?.isAdmin">
+            <button 
+              @click="showEditModal(competition)"
+              class="btn-edit"
+            >
+              Editar
+            </button>
+          </template>
           <!-- Si el usuario está autenticado y no es participante -->
-          <template v-if="authStore.user && !isParticipant(competition)">
+          <template v-else-if="authStore.user && !isParticipant(competition)">
             <button 
               @click="showJoinConfirmation(competition)"
               class="btn-join"
@@ -46,6 +64,108 @@
             Ranking
           </router-link>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal de creación -->
+    <div v-if="showCreateModal" class="modal-overlay">
+      <div class="modal">
+        <h2>Crear Nueva Competición</h2>
+        <form @submit.prevent="handleCreateCompetition" class="competition-form">
+          <div class="form-group">
+            <label for="name">Nombre:</label>
+            <input 
+              type="text" 
+              id="name" 
+              v-model="newCompetition.name" 
+              required 
+              class="form-control"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="startDate">Fecha de inicio:</label>
+            <input 
+              type="date" 
+              id="startDate" 
+              v-model="newCompetition.startDate" 
+              required 
+              class="form-control"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="endDate">Fecha de fin:</label>
+            <input 
+              type="date" 
+              id="endDate" 
+              v-model="newCompetition.endDate" 
+              required 
+              class="form-control"
+            >
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Crear</button>
+            <button type="button" @click="showCreateModal = false" class="btn-secondary">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal de edición -->
+    <div v-if="editingCompetition" class="modal-overlay">
+      <div class="modal">
+        <h2>Editar Competición</h2>
+        <form @submit.prevent="handleEditCompetition" class="competition-form">
+          <div class="form-group">
+            <label for="editName">Nombre:</label>
+            <input 
+              type="text" 
+              id="editName" 
+              v-model="editingCompetition.name" 
+              required 
+              class="form-control"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="editStartDate">Fecha de inicio:</label>
+            <input 
+              type="date" 
+              id="editStartDate" 
+              v-model="editingCompetition.startDate" 
+              required 
+              class="form-control"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="editEndDate">Fecha de fin:</label>
+            <input 
+              type="date" 
+              id="editEndDate" 
+              v-model="editingCompetition.endDate" 
+              required 
+              class="form-control"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input 
+                type="checkbox" 
+                v-model="editingCompetition.isActive"
+              >
+              Competición activa
+            </label>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" @click="editingCompetition = null" class="btn-secondary">Cancelar</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -90,6 +210,13 @@ const competitionStore = useCompetitionStore()
 const authStore = useAuthStore()
 const selectedCompetition = ref(null)
 const showLoginPrompt = ref(false)
+const showCreateModal = ref(false)
+const newCompetition = ref({
+  name: '',
+  startDate: '',
+  endDate: ''
+})
+const editingCompetition = ref(null)
 
 onMounted(async () => {
   await competitionStore.fetchCompetitions()
@@ -123,6 +250,54 @@ async function handleJoinCompetition() {
     console.error('Error al unirse a la competición:', error)
   }
 }
+
+function showEditModal(competition) {
+  // Convertir las fechas al formato YYYY-MM-DD para los inputs date
+  const startDate = new Date(competition.startDate)
+  const endDate = new Date(competition.endDate)
+  
+  editingCompetition.value = {
+    ...competition,
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0]
+  }
+}
+
+async function handleEditCompetition() {
+  if (!editingCompetition.value) return
+
+  try {
+    await competitionStore.updateCompetition(
+      editingCompetition.value.id,
+      editingCompetition.value.name,
+      new Date(editingCompetition.value.startDate),
+      new Date(editingCompetition.value.endDate),
+      editingCompetition.value.isActive
+    )
+    await competitionStore.fetchCompetitions() // Recargar la lista
+    editingCompetition.value = null
+  } catch (error) {
+    console.error('Error al editar la competición:', error)
+  }
+}
+
+async function handleCreateCompetition() {
+  try {
+    await competitionStore.createCompetition(
+      newCompetition.value.name,
+      new Date(newCompetition.value.startDate),
+      new Date(newCompetition.value.endDate)
+    )
+    showCreateModal.value = false
+    newCompetition.value = {
+      name: '',
+      startDate: '',
+      endDate: ''
+    }
+  } catch (error) {
+    console.error('Error al crear la competición:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -130,6 +305,33 @@ async function handleJoinCompetition() {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.admin-actions {
+  margin: 1rem 0 2rem;
+}
+
+.btn-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.btn-create:hover {
+  background-color: #45a049;
+}
+
+.btn-create .icon {
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 .competitions-grid {
@@ -161,7 +363,7 @@ async function handleJoinCompetition() {
   margin-top: 1.5rem;
 }
 
-.btn-primary, .btn-join {
+.btn-primary, .btn-join, .btn-edit {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 4px;
@@ -185,6 +387,11 @@ async function handleJoinCompetition() {
 .btn-join:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+}
+
+.btn-edit {
+  background-color: #FF9800;
+  color: white;
 }
 
 .modal-overlay {
@@ -252,5 +459,24 @@ async function handleJoinCompetition() {
   color: red;
   text-align: center;
   margin-top: 2rem;
+}
+
+.competition-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-control {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
 }
 </style>

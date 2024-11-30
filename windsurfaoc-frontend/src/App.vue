@@ -1,7 +1,7 @@
 <template>
   <div class="app">
     <nav class="navbar">
-      <router-link to="/" class="nav-brand">WindsurfAoC</router-link>
+      <router-link to="/" class="nav-brand">Advent Of Code IntraSoft Ranking</router-link>
       
       <div class="nav-links">
         <template v-if="authStore.user">
@@ -71,10 +71,11 @@ body {
 }
 
 .nav-brand {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: bold;
   color: var(--primary-color);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .nav-links {

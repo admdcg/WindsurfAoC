@@ -82,6 +82,7 @@ public class CompetitionsController : ControllerBase
         );
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<ActionResult<CompetitionResponse>> CreateCompetition(CreateCompetitionRequest request)
     {
@@ -229,6 +230,33 @@ public class CompetitionsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CompetitionResponse>> UpdateCompetition(int id, UpdateCompetitionRequest request)
+    {
+        var competition = await _context.Competitions.FindAsync(id);
+        if (competition == null)
+        {
+            return NotFound();
+        }
+
+        competition.Name = request.Name;
+        competition.StartDate = request.StartDate;
+        competition.EndDate = request.EndDate;
+        competition.IsActive = request.IsActive;
+
+        await _context.SaveChangesAsync();
+
+        return new CompetitionResponse(
+            competition.Id,
+            competition.Name,
+            competition.StartDate,
+            competition.EndDate,
+            competition.IsActive,
+            Enumerable.Empty<ParticipantResponse>()
+        );
     }
 
     [HttpGet("{id}/participants")]

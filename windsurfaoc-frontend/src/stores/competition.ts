@@ -81,6 +81,46 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
   }
 
+  async function createCompetition(name: string, startDate: Date, endDate: Date) {
+    try {
+      loading.value = true
+      error.value = null
+      const response = await axios.post('http://localhost:5071/api/competitions', {
+        name,
+        startDate,
+        endDate
+      })
+      await fetchCompetitions() // Recargar la lista después de crear
+      return response.data
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Error al crear la competición'
+      console.error('Error creating competition:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateCompetition(id: number, name: string, startDate: Date, endDate: Date, isActive: boolean) {
+    try {
+      loading.value = true
+      error.value = null
+      await axios.put(`http://localhost:5071/api/competitions/${id}`, {
+        name,
+        startDate,
+        endDate,
+        isActive
+      })
+      await fetchCompetitions() // Recargar la lista después de actualizar
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Error al actualizar la competición'
+      console.error('Error updating competition:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     competitions,
     currentCompetition,
@@ -91,6 +131,8 @@ export const useCompetitionStore = defineStore('competition', () => {
     fetchCompetitions,
     fetchCompetitionDetails,
     joinCompetition,
-    submitCompletion
+    submitCompletion,
+    createCompetition,
+    updateCompetition
   }
 })
