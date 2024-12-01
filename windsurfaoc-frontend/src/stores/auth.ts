@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       loading.value = true
       error.value = ''
-      const response = await axios.post('/api/auth/login', { email, password })
+      const response = await axios.post('auth/login', { email, password })
       user.value = response.data
       // Guardar en localStorage y configurar axios
       localStorage.setItem('user', JSON.stringify(response.data))
@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       loading.value = true
       error.value = ''
-      const response = await axios.post('/api/auth/register', { email, password })
+      const response = await axios.post('auth/register', { email, password })
       user.value = response.data
       // Guardar en localStorage y configurar axios
       localStorage.setItem('user', JSON.stringify(response.data))

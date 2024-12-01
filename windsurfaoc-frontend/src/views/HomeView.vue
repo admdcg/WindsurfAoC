@@ -205,98 +205,72 @@
 import { onMounted, ref } from 'vue'
 import { useCompetitionStore } from '../stores/competition'
 import { useAuthStore } from '../stores/auth'
+import type { Competition, CreateCompetitionRequest } from '../types/competition'
 
 const competitionStore = useCompetitionStore()
 const authStore = useAuthStore()
-const selectedCompetition = ref(null)
-const showLoginPrompt = ref(false)
+
 const showCreateModal = ref(false)
-const newCompetition = ref({
+const showJoinModal = ref(false)
+const showLoginPrompt = ref(false)
+const selectedCompetition = ref<Competition | null>(null)
+const editingCompetition = ref<Competition | null>(null)
+
+const newCompetition = ref<CreateCompetitionRequest>({
   name: '',
   startDate: '',
   endDate: ''
 })
-const editingCompetition = ref(null)
 
-onMounted(async () => {
-  await competitionStore.fetchCompetitions()
+onMounted(() => {
+  competitionStore.fetchCompetitions()
 })
 
-function isParticipant(competition) {
+const isParticipant = (competition: Competition): boolean => {
   if (!authStore.user) return false
-  return competition.participants.some(p => p.userId === authStore.user.id)
+  return competition.participants.some(p => p.id === authStore.user?.id)
 }
 
-function showJoinConfirmation(competition) {
+const showJoinConfirmation = (competition: Competition) => {
   if (!authStore.user) {
-    showLoginPrompt.value = true
+    // Handle not logged in case - you might want to redirect to login or show a message
     return
   }
   selectedCompetition.value = competition
+  showJoinModal.value = true
 }
 
-function closeJoinModal() {
+const closeJoinModal = () => {
   selectedCompetition.value = null
+  showJoinModal.value = false
 }
 
-async function handleJoinCompetition() {
-  if (!selectedCompetition.value) return
-
-  try {
+const handleJoinCompetition = async () => {
+  if (selectedCompetition.value && authStore.user) {
     await competitionStore.joinCompetition(selectedCompetition.value.id)
-    await competitionStore.fetchCompetitions() // Recargar la lista
     closeJoinModal()
-  } catch (error) {
-    console.error('Error al unirse a la competición:', error)
   }
 }
 
-function showEditModal(competition) {
-  // Convertir las fechas al formato YYYY-MM-DD para los inputs date
-  const startDate = new Date(competition.startDate)
-  const endDate = new Date(competition.endDate)
-  
-  editingCompetition.value = {
-    ...competition,
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0]
-  }
+const showEditModal = (competition: Competition) => {
+  editingCompetition.value = { ...competition }
 }
 
-async function handleEditCompetition() {
-  if (!editingCompetition.value) return
-
-  try {
-    await competitionStore.updateCompetition(
-      editingCompetition.value.id,
-      editingCompetition.value.name,
-      new Date(editingCompetition.value.startDate),
-      new Date(editingCompetition.value.endDate),
-      editingCompetition.value.isActive
-    )
-    await competitionStore.fetchCompetitions() // Recargar la lista
+const handleEditCompetition = async () => {
+  if (editingCompetition.value) {
+    await competitionStore.updateCompetition(editingCompetition.value)
     editingCompetition.value = null
-  } catch (error) {
-    console.error('Error al editar la competición:', error)
   }
 }
 
-async function handleCreateCompetition() {
-  try {
-    await competitionStore.createCompetition(
-      newCompetition.value.name,
-      new Date(newCompetition.value.startDate),
-      new Date(newCompetition.value.endDate)
-    )
-    showCreateModal.value = false
-    newCompetition.value = {
-      name: '',
-      startDate: '',
-      endDate: ''
-    }
-  } catch (error) {
-    console.error('Error al crear la competición:', error)
+const handleCreateCompetition = async () => {
+  await competitionStore.createCompetition(newCompetition.value)
+  newCompetition.value = {
+    name: '',
+    startDate: '',
+    endDate: ''
   }
+  showCreateModal.value = false
 }
 </script>
 

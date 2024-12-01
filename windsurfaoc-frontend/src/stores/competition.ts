@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
+import type { Competition, CreateCompetitionRequest } from '../types/competition'
 
 export const useCompetitionStore = defineStore('competition', () => {
-  const competitions = ref<any[]>([])
-  const currentCompetition = ref<any>(null)
+  const competitions = ref<Competition[]>([])
+  const currentCompetition = ref<Competition | null>(null)
   const participants = ref<any[]>([])
   const completions = ref<any[]>([])
   const loading = ref(false)
@@ -14,7 +15,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     try {
       loading.value = true
       error.value = null
-      const response = await axios.get('http://localhost:5071/api/competitions')
+      const response = await axios.get('/competitions')
       competitions.value = response.data
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al cargar las competiciones'
@@ -29,16 +30,13 @@ export const useCompetitionStore = defineStore('competition', () => {
       loading.value = true
       error.value = null
       const [competitionResponse, participantsResponse, completionsResponse] = await Promise.all([
-        axios.get(`http://localhost:5071/api/competitions/${id}`),
-        axios.get(`http://localhost:5071/api/competitions/${id}/participants`),
-        axios.get(`http://localhost:5071/api/competitions/${id}/completions`)
+        axios.get(`/competitions/${id}`),
+        axios.get(`/competitions/${id}/participants`),
+        axios.get(`/competitions/${id}/completions`)
       ])
       currentCompetition.value = competitionResponse.data
       participants.value = participantsResponse.data
       completions.value = completionsResponse.data
-      
-      // Log para depuración
-      console.log('Completions recibidas:', completionsResponse.data)
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al cargar los detalles de la competición'
       console.error('Error fetching competition details:', err)
@@ -51,9 +49,8 @@ export const useCompetitionStore = defineStore('competition', () => {
     try {
       loading.value = true
       error.value = null
-      await axios.post(`http://localhost:5071/api/competitions/${id}/join`)
-      // Recargar los detalles de la competición para actualizar la lista de participantes
-      await fetchCompetitionDetails(id)
+      await axios.post(`/competitions/${id}/join`)
+      await fetchCompetitions()
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al unirse a la competición'
       console.error('Error joining competition:', err)
@@ -67,13 +64,13 @@ export const useCompetitionStore = defineStore('competition', () => {
     try {
       loading.value = true
       error.value = null
-      await axios.post(`http://localhost:5071/api/competitions/${competitionId}/days/${day}/complete`, {
-        partNumber: part
+      await axios.post(`/competitions/${competitionId}/completions`, {
+        day,
+        part
       })
-      // Recargar los detalles de la competición para actualizar el estado
       await fetchCompetitionDetails(competitionId)
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Error al marcar la parte como completada'
+      error.value = err.response?.data?.message || 'Error al enviar la solución'
       console.error('Error submitting completion:', err)
       throw err
     } finally {
@@ -81,17 +78,12 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
   }
 
-  async function createCompetition(name: string, startDate: Date, endDate: Date) {
+  async function createCompetition(request: CreateCompetitionRequest) {
     try {
       loading.value = true
       error.value = null
-      const response = await axios.post('http://localhost:5071/api/competitions', {
-        name,
-        startDate,
-        endDate
-      })
-      await fetchCompetitions() // Recargar la lista después de crear
-      return response.data
+      await axios.post('/competitions', request)
+      await fetchCompetitions()
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al crear la competición'
       console.error('Error creating competition:', err)
@@ -101,17 +93,12 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
   }
 
-  async function updateCompetition(id: number, name: string, startDate: Date, endDate: Date, isActive: boolean) {
+  async function updateCompetition(competition: Competition) {
     try {
       loading.value = true
       error.value = null
-      await axios.put(`http://localhost:5071/api/competitions/${id}`, {
-        name,
-        startDate,
-        endDate,
-        isActive
-      })
-      await fetchCompetitions() // Recargar la lista después de actualizar
+      await axios.put(`/competitions/${competition.id}`, competition)
+      await fetchCompetitions()
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al actualizar la competición'
       console.error('Error updating competition:', err)
